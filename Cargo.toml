@@ -10,7 +10,7 @@ license = "MIT"
 repository = "https://github.com/pad01g/ai-yagni-data-sdk-example-extension-rust"
 
 [workspace.dependencies]
-ai-yagni-data-sdk = { git = "https://github.com/pad01g/ai-yagni-data-sdk-rust", branch = "main" }
+ai-yagni-data-sdk = { git = "https://github.com/pad01g/ai-yagni-data-sdk-rust", tag = "v0.1.0" }
 vstd = { version = "=0.0.0-2026-10-04-0306" }
 
 [workspace.lints.rust]

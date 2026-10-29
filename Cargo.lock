@@ -20,7 +20,7 @@ dependencies = [
 [[package]]
 name = "ai-yagni-data-sdk"
 version = "0.1.0"
-source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?branch=main#6970e79ed602edc080483992ad0c9fd735b14278"
+source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?tag=v0.1.0#e06e18989d9de6d813a6aa60105f0813953371d6"
 dependencies = [
  "ai-yagni-data-sdk-verified",
 ]
@@ -28,7 +28,7 @@ dependencies = [
 [[package]]
 name = "ai-yagni-data-sdk-verified"
 version = "0.1.0"
-source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?branch=main#6970e79ed602edc080483992ad0c9fd735b14278"
+source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?tag=v0.1.0#e06e18989d9de6d813a6aa60105f0813953371d6"
 dependencies = [
  "vstd",
 ]
