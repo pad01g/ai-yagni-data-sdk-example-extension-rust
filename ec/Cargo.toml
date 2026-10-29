@@ -1,0 +1,18 @@
+[package]
+name = "ai-yagni-data-ec"
+description = "層2の例: SDK を EC の業務の形で拡張したフレームワーク（商品・注文・顧客・決済の構成子）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "ai_yagni_data_ec"
+
+[dependencies]
+ai-yagni-data-sdk.workspace = true
+ai-yagni-data-ec-verified = { path = "../verified", version = "0.1.0" }
+
+[lints]
+workspace = true
