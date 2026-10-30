@@ -1,7 +1,7 @@
 //! 商品と在庫。
-use ai_yagni_data_sdk::vocab::{Kind, SqlFile, Word, check_exists, column_is, define, foreign_key, shape, sql_empty};
-
-use crate::in_order;
+use ai_yagni_data_sdk::vocab::{
+    Kind, SqlFile, Word, check_exists, column_is, columns_named_only_in, define, foreign_key, seq, shape, sql_empty,
+};
 
 const PRODUCT_WITHOUT_VARIANT: SqlFile =
     SqlFile::new("product_without_variant.sql", include_str!("sql/product_without_variant.sql"));
@@ -35,13 +35,13 @@ impl Catalog {
         )
     }
 
-    /// CHECK 制約は名前しか見ない。今の行に負の在庫がないことは SQL で確かめる。
-    /// 負の在庫を書き込めないこと（制約の中身）は、未来の rejects で確かめる。
-    pub fn stock_floor_is_named(&self) -> Word {
+    /// 名前の付いた CHECK 制約があること（構造）と、今の行に負の在庫がないこと（データ）の両方を見る。
+    /// 制約の中身（負の在庫を書き込めないこと）は見ない。それは今の probe と未来の rejects で確かめる。
+    pub fn stock_stays_above_its_floor(&self) -> Word {
         define(
-            "stock_floor_is_named",
-            "在庫の下限は名前の付いた CHECK 制約にあり（未来の差分がその名前で外して付け替えられる）、在庫が 0 を下回る商品はない",
-            in_order(vec![
+            "stock_stays_above_its_floor",
+            "在庫の下限は名前の付いた CHECK 制約にあり（未来の差分がその名前で外して付け替えられる）、今の行にも在庫が 0 を下回る商品はない",
+            seq([
                 check_exists(self.table, self.stock_floor),
                 sql_empty(
                     STOCK_BELOW_ZERO,
@@ -59,11 +59,16 @@ impl Catalog {
         )
     }
 
+    /// 上限は在庫と同じ表になければ意味がない。在庫の列（`stock` か `_stock` で終わる名前）が商品の表の外にあれば
+    /// （在庫をバリエーションへ移したなど）、成り立たない。
     pub fn stock_allows_backorder(&self, limit: &str) -> Word {
         define(
             "stock_allows_backorder",
-            "商品ごとに、在庫を超えて受けられる予約の上限がある",
-            column_is(self.table, limit, shape().kind(Kind::Integer).not_null()),
+            "商品ごとに、在庫を超えて受けられる予約の上限がある。在庫は商品の表にだけある（上限と在庫が同じ行にある。在庫をほかの表へ移すなら、上限も一緒に移す）",
+            seq([
+                column_is(self.table, limit, shape().kind(Kind::Integer).not_null()),
+                columns_named_only_in(&[self.stock], &[self.table]),
+            ]),
         )
     }
 
@@ -71,7 +76,7 @@ impl Catalog {
         define(
             "sold_as_variants",
             "どの商品も、少なくとも 1 つのバリエーションとして売る",
-            in_order(vec![
+            seq([
                 foreign_key(v.table, &[v.product], self.table, &[self.id]),
                 sql_empty(
                     PRODUCT_WITHOUT_VARIANT,

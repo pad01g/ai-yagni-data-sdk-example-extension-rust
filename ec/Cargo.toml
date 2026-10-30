@@ -12,7 +12,7 @@ name = "ai_yagni_data_ec"
 
 [dependencies]
 ai-yagni-data-sdk.workspace = true
-ai-yagni-data-ec-verified = { path = "../verified", version = "0.2.0" }
+ai-yagni-data-ec-verified = { path = "../verified", version = "0.3.0" }
 
 [lints]
 workspace = true

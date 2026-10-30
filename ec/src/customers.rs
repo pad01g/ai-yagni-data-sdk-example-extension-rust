@@ -1,6 +1,7 @@
 //! 顧客と、顧客を指す注文。
 use ai_yagni_data_sdk::vocab::{Fact, OnDelete, SqlFile, Word, all, define, foreign_key, references_to, sql_empty};
 
+use crate::guarded_by;
 use crate::orders::Orders;
 
 const PII_OUTSIDE: SqlFile = SqlFile::new("pii_outside.sql", include_str!("sql/pii_outside.sql"));
@@ -9,7 +10,8 @@ const PII_OUTSIDE: SqlFile = SqlFile::new("pii_outside.sql", include_str!("sql/p
 ///
 /// pii は個人情報の列の名前の一部（大文字と小文字は区別しない）。`email` なら `notify_email` も `email_address` も
 /// `billing_email_hash` も個人情報とみなす。略した名前（`addr`・`tel`）は、その形も並べる（`addr` は `address` も含む）。
-/// 名前に表れない個人情報（`note` に書いた住所など）は見つけられない。
+/// 短すぎる一部は、個人情報でない列まで拾う（`name` は商品の `name` も拾う）。氏名は `full_name` や `recipient` のように、
+/// ほかの表に現れない形で並べる。名前に表れない個人情報（`note` に書いた住所など）は見つけられない。
 #[derive(Debug, Clone, Copy)]
 pub struct Customers {
     pub table: &'static str,
@@ -21,7 +23,7 @@ impl Customers {
     pub fn pii_stays_here(&self) -> Word {
         define(
             "pii_stays_on_customers",
-            "個人情報（メール・パスワードのハッシュ・氏名・住所）は顧客の表にだけある（注文などに写さない）",
+            "個人情報（メール・パスワードのハッシュ・氏名・住所・電話・郵便番号・生年月日・届け先）は顧客の表にだけある（注文などに写さない）",
             all(self
                 .pii
                 .iter()
@@ -42,15 +44,19 @@ impl Customers {
         )
     }
 
-    pub fn erasure_takes_their_orders(&self, orders: &Orders) -> Word {
+    /// unsettled_guard は、決着していない注文のある顧客の削除を拒む、顧客の表の DELETE の前のトリガーの名前。
+    /// 連鎖した削除は在庫を戻さないので、引き当てた在庫を持つ注文（決着していない注文）は連鎖で消してはいけない。
+    /// トリガーは名前しか見ない。何を拒むかは未来の rejects で確かめる。
+    pub fn erasure_takes_their_orders(&self, orders: &Orders, unsettled_guard: &str) -> Word {
         define(
             "erasing_a_customer_takes_their_orders",
-            "顧客の行を消すと、その顧客の注文と明細も消える（個人と結び付く記録を残さない）",
+            "顧客の行を消すと、その顧客の注文と明細も消える（個人と結び付く記録を残さない）。決着していない注文（在庫を引き当てたまま）のある顧客は消せない（連鎖した削除は在庫を戻さない）",
             all([
                 self.orders_point_here(orders),
                 foreign_key(orders.lines.table, &[orders.lines.order], orders.table, &[orders.id]),
                 references_to(self.table, &[OnDelete::Cascade]),
                 references_to(orders.table, &[OnDelete::Cascade]),
+                guarded_by(self.table, "DELETE", unsettled_guard),
             ]),
         )
     }

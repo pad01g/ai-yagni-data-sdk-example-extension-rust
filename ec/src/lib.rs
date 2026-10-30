@@ -11,11 +11,11 @@ mod customers;
 mod orders;
 mod payments;
 
-use ai_yagni_data_sdk::vocab::{Fact, Verdict, Word, all, define};
+use ai_yagni_data_sdk::vocab::{Fact, SqlFile, Word, define, seq, sql_empty};
 
 pub use crate::catalog::{Catalog, Variants};
 pub use crate::customers::Customers;
-pub use crate::orders::{Lines, Orders};
+pub use crate::orders::{Lines, Orders, RecordGuards, ShipmentGuards};
 pub use crate::payments::Payments;
 
 /// 税の端数処理（Verus で証明済み）。`order_taxes_match_rates` が DB の上で確かめる規則と同じ。
@@ -29,32 +29,22 @@ pub mod shop {
     pub const DATA: &str = include_str!("../tests/fixtures/shop/0001_shop.sql");
 }
 
-/// 言明を前から順に確かめ、成り立たないものがあればそこで止める（その結果を返す）。
+const TRIGGER_MISSING: SqlFile = SqlFile::new("trigger_missing.sql", include_str!("sql/trigger_missing.sql"));
+
+/// table に、event（`INSERT`・`UPDATE`・`DELETE`）の前に走る name という名前のトリガーがある。中身は見ない。
 ///
-/// 後ろの言明が前の言明の確かめる表や列を読むとき（列があるか → その列の値を読む SQL）、前が成り立たなければ
-/// 後ろは確かめられない（SQL が失敗して Error）。SDK の `all` はそれを Error にするので、ここでは確かめずに止め、
-/// 前の言明が成り立たない理由（列がない）を返す。構造の言明を前に、データの言明を後ろに並べる。
-///
-/// 材料（parts）は残らない。書き間違いのある言明を含むなら、検査の規則の節に出るように SDK の `all` のまま返す。
-pub(crate) fn in_order(facts: Vec<Fact>) -> Fact {
-    if facts.is_empty() || facts.iter().any(|f| !f.flaws().is_empty()) {
-        return all(facts);
-    }
-    let says = facts.iter().map(Fact::says).collect::<Vec<_>>().join(" and ");
-    Fact::new(says, move |db| {
-        for f in &facts {
-            match f.holds(db) {
-                Verdict::Pass => {}
-                other => return other,
-            }
-        }
-        Verdict::Pass
-    })
+/// SDK の `guarded_against` は名前を見ないので、ほかの未来が同じ表に足したトリガー（中身が空でも）で成り立ってしまう。
+/// 語が守りを言うときは、守るトリガーを名前で指す。何を拒むかは、未来の `rejects_with` がその名前で確かめる
+/// （トリガーの SIGNAL の文の先頭に、自分の名前を書いておく）。
+pub(crate) fn guarded_by(table: &str, event: &str, name: &str) -> Fact {
+    sql_empty(TRIGGER_MISSING, &[("table", table), ("event", event), ("trigger", name)])
 }
 
 /// 語を前から順に確かめ、成り立たない語があればそこで止める語（未来の `realized_if` に、then の語をまとめて渡すため）。
 ///
-/// 構造の語（列や表があるか）を前に、データの語を後ろに並べる（[`in_order`] と同じ）。
+/// SDK の `seq` で作る。前の語が成り立たなければ（確かめられなくても）、後ろの語は確かめずにその結果を返す。
+/// 構造の語（列や表があるか）を前に、それを読むデータの語を後ろに並べる。材料の語は残る
+/// （語の依存と、書き間違いの報告に出る）。
 pub fn all_of(name: &str, meaning: &str, words: &[&Word]) -> Word {
-    define(name, meaning, in_order(words.iter().map(|w| w.fact()).collect()))
+    define(name, meaning, seq(words.iter().map(|w| w.fact())))
 }

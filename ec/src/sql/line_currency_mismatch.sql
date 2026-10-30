@@ -1,8 +1,7 @@
--- 商品の通貨が、注文の通貨と違う明細（どちらかが NULL のものも数える）。
-SELECT i.{{line_order}} AS order_id, i.{{line_product}} AS product_id,
-       o.{{order_currency}} AS order_currency, p.{{product_currency}} AS product_currency
+-- 明細が写した通貨が、注文の通貨と違う明細（どちらかが NULL のものも数える）。
+-- 商品の今の通貨とは比べない（明細の通貨は、単価と同じく注文した時点の写し）。
+SELECT i.{{line_order}} AS order_id, i.{{line_currency}} AS line_currency, o.{{order_currency}} AS order_currency
 FROM {{lines}} i
 JOIN {{orders}} o ON o.{{order_id}} = i.{{line_order}}
-JOIN {{products}} p ON p.{{product_id}} = i.{{line_product}}
-WHERE NOT (o.{{order_currency}} <=> p.{{product_currency}})
-   OR o.{{order_currency}} IS NULL OR p.{{product_currency}} IS NULL
+WHERE NOT (o.{{order_currency}} <=> i.{{line_currency}})
+   OR o.{{order_currency}} IS NULL OR i.{{line_currency}} IS NULL
