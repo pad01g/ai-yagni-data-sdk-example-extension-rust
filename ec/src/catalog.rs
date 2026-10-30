@@ -1,10 +1,11 @@
 //! 商品と在庫。
-use ai_yagni_data_sdk::vocab::{
-    Kind, SqlFile, Word, all, check_exists, column_is, define, foreign_key, shape, sql_empty,
-};
+use ai_yagni_data_sdk::vocab::{Kind, SqlFile, Word, check_exists, column_is, define, foreign_key, shape, sql_empty};
+
+use crate::in_order;
 
 const PRODUCT_WITHOUT_VARIANT: SqlFile =
     SqlFile::new("product_without_variant.sql", include_str!("sql/product_without_variant.sql"));
+const STOCK_BELOW_ZERO: SqlFile = SqlFile::new("stock_below_zero.sql", include_str!("sql/stock_below_zero.sql"));
 
 /// 商品の表。
 #[derive(Debug, Clone, Copy)]
@@ -34,11 +35,19 @@ impl Catalog {
         )
     }
 
+    /// CHECK 制約は名前しか見ない。今の行に負の在庫がないことは SQL で確かめる。
+    /// 負の在庫を書き込めないこと（制約の中身）は、未来の rejects で確かめる。
     pub fn stock_floor_is_named(&self) -> Word {
         define(
             "stock_floor_is_named",
-            "在庫の下限は名前の付いた CHECK 制約で守られている（未来の差分がその名前で外して付け替えられる）",
-            check_exists(self.table, self.stock_floor),
+            "在庫の下限は名前の付いた CHECK 制約にあり（未来の差分がその名前で外して付け替えられる）、在庫が 0 を下回る商品はない",
+            in_order(vec![
+                check_exists(self.table, self.stock_floor),
+                sql_empty(
+                    STOCK_BELOW_ZERO,
+                    &[("products", self.table), ("product_id", self.id), ("stock", self.stock)],
+                ),
+            ]),
         )
     }
 
@@ -62,7 +71,7 @@ impl Catalog {
         define(
             "sold_as_variants",
             "どの商品も、少なくとも 1 つのバリエーションとして売る",
-            all([
+            in_order(vec![
                 foreign_key(v.table, &[v.product], self.table, &[self.id]),
                 sql_empty(
                     PRODUCT_WITHOUT_VARIANT,

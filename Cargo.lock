@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "ai-yagni-data-ec"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ai-yagni-data-ec-verified",
  "ai-yagni-data-sdk",
@@ -12,23 +12,23 @@ dependencies = [
 
 [[package]]
 name = "ai-yagni-data-ec-verified"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vstd",
 ]
 
 [[package]]
 name = "ai-yagni-data-sdk"
-version = "0.1.0"
-source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?tag=v0.1.0#e06e18989d9de6d813a6aa60105f0813953371d6"
+version = "0.2.0"
+source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?tag=v0.2.0#dc9200713a376c465561f16cf1bfbc53afdfee34"
 dependencies = [
  "ai-yagni-data-sdk-verified",
 ]
 
 [[package]]
 name = "ai-yagni-data-sdk-verified"
-version = "0.1.0"
-source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?tag=v0.1.0#e06e18989d9de6d813a6aa60105f0813953371d6"
+version = "0.2.0"
+source = "git+https://github.com/pad01g/ai-yagni-data-sdk-rust?tag=v0.2.0#dc9200713a376c465561f16cf1bfbc53afdfee34"
 dependencies = [
  "vstd",
 ]
